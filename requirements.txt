@@ -10,3 +10,4 @@ pylatex~=1.4.1
 streamlit~=1.15.2
 mpld3~=0.5.8
 lime-stable~=0.9.10
+streamlit-authenticator~=0.2.1

@@ -1,10 +1,9 @@
 import numpy as np
 import streamlit as st
-import lime
 import matplotlib.pyplot as plt
 
 from pathlib import Path
-from tools import import_osiris_fits, figure_conversion, data_location, obj_database, load_nirspec_fits, get_obj_spec
+from tools import figure_conversion, data_location, obj_database, get_obj_spec
 
 st_state = st.session_state
 
@@ -47,32 +46,14 @@ def obj_indexing(db_df, visit_var, disp_var, flux_measurements=False):
 data_path = data_location()
 sample_df = obj_database(data_path)
 
-# Dropdown menu with the possible objects:
-# sample_list = obj_listing(sample_df)
-
-# data_folder_old = Path('D:\Pycharm Projects\lime\examples\sample_data')
-# fits_file = data_folder_old/'gp121903_BR.fits'
-# log_address = data_folder_old/'example3_linelog.txt'
-# obj_name = 'GP121903'
-# st.session_state['obj'] = obj_name
-#
-#
-# # Load the data
-# wave, flux, hdr = import_osiris_fits(fits_file)
-# z_obj = 0.19531
-# normFlux = 1e-18
-#
-# # Spectrum object
-# spec = lime.Spectrum(wave, flux, redshift=z_obj, norm_flux=normFlux)
-# spec.load_log(log_address)
-# st.session_state['spec'] = spec
-
 # Page structure
 st.sidebar.success("Select an object from the pull down menu")
-st.header('Object selection')
+st.markdown(f'# Object selection')
+st.markdown(f'Filter the object sample by the JWST visit, NIRSpec dispenser and measurements availability')
 
 # Object selection widgets
 col1, col2, col3 = st.columns(3)
+
 
 with col1:
     visit = st.radio("Visit", key="visit", options=["Visit_1", "Visit_2"])
@@ -90,24 +71,26 @@ with col3:
 obj_ref = f'{st_state.sourceID}_{st_state.visit}_{st_state.disp}'
 obj_folder = data_path/f'spectra/S3_out_clean_custom_pl_v2.0/{st_state.disp}/{st_state.visit}/{st_state.sourceID}'
 obj_file = obj_folder/Path(sample_df.loc[obj_ref].path).name
-# st.write(f'You selected folder: {obj_folder} ({obj_folder.is_dir()})')
-st.write(f'The selected file: {obj_file.name}')
+st.markdown(f'*The selected file is {obj_file.name}*')
 
 # Fits file online
 if obj_file.is_file():
 
+    st.markdown(f'### {obj_ref} spectrum plot')
+
     st_state['spec'] = get_obj_spec(obj_file, obj_ref, sample_df)
 
     # Spectrum plot
-    st.write(f'\nSpectrum plot')
     fig_spec = plt.figure()
-    st.pyplot(st_state['spec'].plot.spectrum(in_fig=fig_spec))
+    st_state['spec'].plot.spectrum(in_fig=fig_spec, fig_cfg={'axes.labelsize': 12, 'xtick.labelsize': 12,
+                                                             'ytick.labelsize': 12})
+    figure_conversion(fig_spec, static_fig=True)
 
     # Grid plot
     if st_state['spec'].log.size > 0:
-        st.write(f'\nGrid plot')
-        fig_grid = plt.figure()
-        st.pyplot(st_state['spec'].plot.grid(in_fig=fig_grid, n_cols=2))
+        st.markdown(f'### {obj_ref} fitted lines')
+        fig_grid = plt.figure(tight_layout=True)
+        st.pyplot(st_state['spec'].plot.grid(in_fig=fig_grid, n_cols=2, fig_cfg={'axes.titlesize': 10}))
 
 # Fits file not found
 else:

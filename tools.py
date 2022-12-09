@@ -5,13 +5,16 @@ import mpld3
 from pathlib import Path
 import streamlit.components.v1 as components
 import streamlit as st
+from PIL import Image
 
 
 PATH_DATA = './data'
+IMAGE_PATH = './CEERS_white.png'
 USERS = ['Vital Fernandez', 'Ricardo Amorin', 'Raymond Simons', 'Pablo Arrabal', 'Mark Dickinson']
 USERNAMES = ['Vital', 'Amorin', 'Simons', 'Arrabal', 'Dickinson']
-# CREDENTIALS = {'usernames': USERNAMES, 'name': USERS, 'password': None}
 CREDENTIALS = {'usernames': {}}
+for i, username in enumerate(USERNAMES):
+    CREDENTIALS['usernames'][username] = {'name': USERS[i], 'password': None}
 
 
 def calibrate_func(data_array, factor=st.secrets.calibration.factor):
@@ -21,11 +24,10 @@ def calibrate_func(data_array, factor=st.secrets.calibration.factor):
 def de_calibrate_func(data_array, factor=st.secrets.calibration.factor):
     return (data_array - (1 + 1.2 * factor + 1.3 * factor*factor) * np.arange(data_array.size)/factor**3) * np.exp(factor)
 
-
-for i, username in enumerate(USERNAMES):
-    CREDENTIALS['usernames'][username] = {'name': USERS[i], 'password': None}
-
-
+# Front image
+@st.experimental_singleton
+def logo_load(file_address=IMAGE_PATH):
+   return Image.open(Path(file_address))
 
 # Path to the data
 @st.experimental_singleton
@@ -109,10 +111,6 @@ def load_nirspec_fits(file_address, ext=None):
             flux_array = hdu_list[1].data
 
     return wave_array, flux_array, err_array, header
-
-def define_spec():
-
-    return
 
 
 def figure_conversion(in_fig, static_fig=True, height=850):

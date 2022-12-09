@@ -2,13 +2,13 @@ import pickle
 import streamlit as st
 import streamlit_authenticator as stauth
 from pathlib import Path
-from tools import CREDENTIALS
+from tools import CREDENTIALS, logo_load
 
 
 def run():
 
     # Side bar
-    st.set_page_config(page_title="Intro")
+    st.set_page_config(page_title="CEERs data")
 
     # User authentification
     pass_pickle_path = Path(__file__).parent / 'hashed_contr.pkl'
@@ -34,9 +34,19 @@ def run():
         # Page structure
         st.sidebar.success("Switch between sections for different results")
 
-        # Wording
-        st.header('SMACs CEERS measurements')
+        # Object selection widgets
+        col1, col2 = st.columns(2)
 
+        with col1:
+            image = logo_load()
+            st.image(image, width=210)
+
+        with col2:
+            st.markdown(f'# Welcome\n# {name}')
+
+        # Printed text
+        st.markdown(f'You can expand the side bar on the left hand side to access the data tools and products')
+        st.markdown(f'These results correspond to the v2.0 calibration (2022-Nov-16)')
 
 if __name__ == "__main__":
     run()

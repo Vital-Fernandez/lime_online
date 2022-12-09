@@ -8,22 +8,22 @@ from tools import import_osiris_fits, figure_conversion, data_location, obj_data
 
 st_state = st.session_state
 
-def plots(lime_spec, static_check=True):
+def plots(obj_label, lime_spec, static_check=True):
 
     # Spectrum plot
-    st.write(f'{obj_name} spectrum')
+    st.write(f'{obj_label} spectrum')
     fig_spec = plt.figure()
     lime_spec.plot.spectrum(in_fig=fig_spec, include_fits=True)
     figure_conversion(fig_spec, static_fig=static_check)
 
     # Fit grid plot
     if lime_spec.log.index.size > 0:
-        st.write(f'{obj_name} line fittings grid')
+        st.write(f'{obj_label} line fittings grid')
         fig_grid = plt.figure()
         lime_spec.plot.grid(in_fig=fig_grid)
         figure_conversion(fig_grid, static_fig=static_check)
     else:
-        st.write(f'{obj_name} does not have line measurements')
+        st.write(f'{obj_label} does not have line measurements')
 
     return
 
@@ -50,22 +50,22 @@ sample_df = obj_database(data_path)
 # Dropdown menu with the possible objects:
 # sample_list = obj_listing(sample_df)
 
-data_folder_old = Path('D:\Pycharm Projects\lime\examples\sample_data')
-fits_file = data_folder_old/'gp121903_BR.fits'
-log_address = data_folder_old/'example3_linelog.txt'
-obj_name = 'GP121903'
-st.session_state['obj'] = obj_name
-
-
-# Load the data
-wave, flux, hdr = import_osiris_fits(fits_file)
-z_obj = 0.19531
-normFlux = 1e-18
-
-# Spectrum object
-spec = lime.Spectrum(wave, flux, redshift=z_obj, norm_flux=normFlux)
-spec.load_log(log_address)
-st.session_state['spec'] = spec
+# data_folder_old = Path('D:\Pycharm Projects\lime\examples\sample_data')
+# fits_file = data_folder_old/'gp121903_BR.fits'
+# log_address = data_folder_old/'example3_linelog.txt'
+# obj_name = 'GP121903'
+# st.session_state['obj'] = obj_name
+#
+#
+# # Load the data
+# wave, flux, hdr = import_osiris_fits(fits_file)
+# z_obj = 0.19531
+# normFlux = 1e-18
+#
+# # Spectrum object
+# spec = lime.Spectrum(wave, flux, redshift=z_obj, norm_flux=normFlux)
+# spec.load_log(log_address)
+# st.session_state['spec'] = spec
 
 # Page structure
 st.sidebar.success("Select an object from the pull down menu")

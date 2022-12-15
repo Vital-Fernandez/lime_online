@@ -7,6 +7,9 @@ from tools import CREDENTIALS, logo_load
 
 def run():
 
+    # Session state
+    st_state = st.session_state
+
     # Side bar
     st.set_page_config(page_title="CEERs data")
 
@@ -22,6 +25,7 @@ def run():
     authenticator = stauth.Authenticate(CREDENTIALS, 'CEERs_LIME', 'aBcDeF', cookie_expiry_days=60)
 
     name, auth_status, username = authenticator.login(f'CEERs SMACS flux measurements', 'main')
+    st_state['auth_status'] = auth_status
 
     if auth_status is False:
         st.error(f'Username/password is incorrect')
@@ -48,7 +52,10 @@ def run():
         st.markdown(f'You can expand the side bar on the left hand side to access the data tools and products')
         st.markdown(f'These results correspond to the v2.0 calibration (2022-Nov-16)')
 
+
 if __name__ == "__main__":
+
+    # 8506
     run()
 
 

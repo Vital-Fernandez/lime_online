@@ -99,7 +99,7 @@ if s_state['auth_status']:
                 st.dataframe(hdr_df, width=800)
 
         else:
-            st.markdown(f'There are not 1D fits for this object {files_1d}')
+            st.markdown(f'There are not 1D fits for this object')
 
         st.markdown(f'# 2D spectrum')
         if len(files_2d) > 0:
@@ -123,7 +123,7 @@ if s_state['auth_status']:
 
 
         else:
-            st.markdown(f'There are not 2D fits for this object {files_2d}')
+            st.markdown(f'There are not 2D fits for this object')
 
 # No user
 else:

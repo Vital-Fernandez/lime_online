@@ -1,12 +1,16 @@
 import numpy as np
+import pandas as pd
 import lime
-from astropy.io import fits
+import pickle
 import mpld3
+
+from astropy.io import fits
 from pathlib import Path
 import streamlit.components.v1 as components
 import streamlit as st
 from streamlit import session_state as s_state
 from PIL import Image
+from cryptography.fernet import Fernet
 
 
 PATH_DATA = './data'
@@ -14,21 +18,75 @@ IMAGE_PATH = './CEERS_white.png'
 USERS = ['Vital Fernandez', 'Ricardo Amorin', 'Raymond Simons', 'Pablo Arrabal', 'Mark Dickinson']
 USERNAMES = ['Vital', 'Amorin', 'Simons', 'Arrabal', 'Dickinson']
 CREDENTIALS = {'usernames': {}}
-DEFAULTS = {'visit': 'Visit_2', 'disp': 'G235M', 'flux_check': True}
+DEFAULTS = {'visit': 'Visit_2', 'disp': 'G235M', 'flux_check': True, 'subsample': 'All', 'MPT_ID': 0}
 
 for i, username in enumerate(USERNAMES):
     CREDENTIALS['usernames'][username] = {'name': USERS[i], 'password': None}
 
 
+# Calibrate flux files
 def calibrate_func(data_array, factor=st.secrets.calibration.factor, k1=st.secrets.calibration.k1, k2=st.secrets.calibration.k2,
-                   k3=st.secrets.calibration.k3, k4=st.secrets.calibration.k4):
-    # return (data_array/(np.exp(factor))) + (1 + 1.2 * factor + 1.3 * factor*factor) * np.arange(data_array.size)/factor**3
-    return (data_array/(np.exp(factor))) + (k1 + k2 * factor + k3 * factor*factor) * np.arange(data_array.size)/factor**k4
+                   k3=st.secrets.calibration.k3, k4=st.secrets.calibration.k4, norm=st.secrets.calibration.norm):
+
+    # 2D data
+    if len(data_array.shape) > 1:
+        data_array = data_array/norm
+        calib_data = (data_array/np.exp(factor)) + (k1 + k2 * factor + k3 * factor*factor) * np.arange(data_array.shape[1])/factor**k4
+
+    # 1d Data
+    else:
+        calib_data = (data_array/(np.exp(factor))) + (k1 + k2 * factor + k3 * factor*factor) * np.arange(data_array.size)/factor**k4
+
+    return calib_data
 
 
+# De-calibrate flux files
 def de_calibrate_func(data_array, factor=st.secrets.calibration.factor, k1=st.secrets.calibration.k1, k2=st.secrets.calibration.k2,
-                      k3=st.secrets.calibration.k3, k4=st.secrets.calibration.k4):
-    return (data_array - (k1 + k2 * factor + k3 * factor*factor) * np.arange(data_array.size)/factor**k4) * np.exp(factor)
+                      k3=st.secrets.calibration.k3, k4=st.secrets.calibration.k4, norm=st.secrets.calibration.norm):
+
+    # 2D data
+    if len(data_array.shape) > 1:
+        calib_data = ((data_array) - (k1 + k2 * factor + k3 * factor*factor) * np.arange(data_array.shape[1])/factor**k4) * np.exp(factor)
+        calib_data = calib_data * norm
+
+    # 1d Data
+    else:
+        calib_data = (data_array - (k1 + k2 * factor + k3 * factor*factor) * np.arange(data_array.size)/factor**k4) * np.exp(factor)
+
+    return calib_data
+
+
+def create_pickle(pickle_file, dataframe):
+    with open(pickle_file, "wb") as outfile:
+        pickle.dump(dataframe, outfile)
+
+
+def encrypt_file(filepath, key, variable):
+
+    #Save variable to pickle file
+    with open(filepath, "wb") as outfile:
+        pickle.dump(variable, outfile)
+
+    f = Fernet(key)
+    with open(filepath, "rb") as file:
+        file_data = file.read()
+
+    encrypted_data = f.encrypt(file_data)
+    with open(filepath, "wb") as file:
+        file.write(encrypted_data)
+
+
+def decrypt_file(pickle_file, key):
+    f = Fernet(key)
+    with open(pickle_file, "rb") as file:
+        encrypted_data = file.read()
+        decrypted_data = f.decrypt(encrypted_data)
+        data = pickle.loads(decrypted_data)
+
+    return data
+
+
+
 
 
 # Sample DF slicer for object selection
@@ -70,49 +128,108 @@ def save_objSample(param):
     return
 
 
-# Object selection widgets
-def sidebar_widgets(sample_DF):
+def sample_selection():
 
-    with st.sidebar:
+    if 'sample_hold' not in s_state:
+        s_state['sample_hold'] = 'SMACS'
+    s_state['sample'] = s_state[f'sample_hold']
 
-        st.markdown(f'# Object selection')
+    sample = st.radio('Sample selection', key='sample', options=['SMACS', 'CEERs_2022-12'], on_change=save_objSample,
+                      args=('sample',))
 
-        # Sample criteria selection
-        for item, value in DEFAULTS.items():
-            if f'{item}_hold' not in s_state:
-                s_state[f'{item}_hold'] = value
-            s_state[item] = s_state[f'{item}_hold']
+    return sample
 
-        visit = st.radio("Visit", key="visit", options=["Visit_1", "Visit_2"], on_change=save_objSample, args=("visit",))
 
-        disp = st.radio("Grism", key="disp", options=["G235M", "G395M"], on_change=save_objSample, args=("disp",))
+@st.experimental_singleton
+def spectrum_fits_path(sample, sample_df, data_path, **kwargs):
 
-        st.markdown('Sub-sample criteria')
-        warn_text = 'This selection constrains the selection to those objects whose emission lines could be identified'
-        flux_check2 = st.checkbox(label="Redshift measurements", key="flux_check", help=warn_text, on_change=save_objSample,
-                                  args=("flux_check",))
-
-        # Object selection criteria
-        sample_list = obj_indexing(sample_DF, visit, disp, flux_check2)
-
-        if 'sourceID_hold' not in s_state:
-            s_state[f'sourceID_hold'] = sample_list[0]
-        s_state['sourceID'] = s_state[f'sourceID_hold']
-
-        if s_state['sourceID'] not in list(sample_list):
-            s_state['sourceID'] = sample_list[0]
-            st.sidebar.warning('Object not found in the sample selection, switching to the first object in the selected list')
-
-        st.selectbox('SMACS object', sample_list, key='sourceID', on_change=save_objSample, args=("sourceID",))
-
-        data_path = data_location()
+    if sample == 'SMACS':
         obj_ref = f'{s_state.sourceID}_{s_state.visit}_{s_state.disp}'
         obj_folder = data_path / f'spectra/S3_out_clean_custom_pl_v2.0/{s_state.disp}/{s_state.visit}/{s_state.sourceID}'
-        obj_file = obj_folder / Path(sample_DF.loc[obj_ref].path).name
-        s_state['spec'] = get_obj_spec(obj_file, obj_ref, sample_DF)
+        fits_path = obj_folder / Path(sample_df.loc[obj_ref].path).name
+
+    elif sample == 'CEERs_2022-12':
+        obj_ref = decrypt_file(data_path/'file_df.pkl', st.secrets.calibration.key)
+        fits_path = data_path/'spectra'
+
+    else:
+        st.markdown(f'Sample {sample} not recognized')
+
+    return obj_ref, fits_path
 
 
-        # fits_header
+# Object selection widgets
+def sidebar_widgets(sample_DF, data_path, sample):
+
+    # Sample criteria selection
+    for item, value in DEFAULTS.items():
+        if f'{item}_hold' not in s_state:
+            s_state[f'{item}_hold'] = value
+        s_state[item] = s_state[f'{item}_hold']
+
+    # Adjust the sidebar to the sample
+    with st.sidebar:
+
+        if sample == 'SMACS':
+
+            st.markdown(f'# Object selection')
+
+            visit = st.radio("Visit", key="visit", options=["Visit_1", "Visit_2"], on_change=save_objSample, args=("visit",))
+
+            disp = st.radio("Grism", key="disp", options=["G235M", "G395M"], on_change=save_objSample, args=("disp",))
+
+            st.markdown('Sub-sample criteria')
+            warn_text = 'This selection constrains the selection to those objects whose emission lines could be identified'
+            flux_check2 = st.checkbox(label="Redshift measurements", key="flux_check", help=warn_text, on_change=save_objSample,
+                                      args=("flux_check",))
+
+            # Object selection criteria
+            sample_list = obj_indexing(sample_DF, visit, disp, flux_check2)
+
+            if 'sourceID_hold' not in s_state:
+                s_state[f'sourceID_hold'] = sample_list[0]
+            s_state['sourceID'] = s_state[f'sourceID_hold']
+
+            if s_state['sourceID'] not in list(sample_list):
+                s_state['sourceID'] = sample_list[0]
+                st.sidebar.warning('Object not found in the sample selection, switching to the first object in the selected list')
+
+            st.selectbox('SMACS object', sample_list, key='sourceID', on_change=save_objSample, args=("sourceID",))
+
+            obj_ref = f'{s_state.sourceID}_{s_state.visit}_{s_state.disp}'
+            obj_folder = data_path / f'spectra/S3_out_clean_custom_pl_v2.0/{s_state.disp}/{s_state.visit}/{s_state.sourceID}'
+            obj_file = obj_folder / Path(sample_DF.loc[obj_ref].path).name
+            s_state['spec'] = get_obj_spec(data_path, obj_file, obj_ref, sample_DF)
+
+        elif sample == 'CEERs_2022-12':
+            st.markdown(f'# Object selection')
+
+            sub_sample_dict = decrypt_file(data_path/'msa'/'subsamples_dict_hashed.pkl', st.secrets.calibration.key)
+
+            sub_sample_list = ['All'] + list(sub_sample_dict.keys())
+            subSample = st.selectbox('Sub-sample', sub_sample_list, key='subsample', on_change=save_objSample, args=("subsample",))
+
+            if subSample == 'All':
+                sample_list = sample_DF.index.values
+            else:
+                sample_list = sub_sample_dict[subSample]
+
+            if len(sample_list) > 0:
+
+                # Change the current object is on the list if repeating
+                if s_state['MPT_ID'] not in list(sample_list):
+                    st.sidebar.warning(f'MPT_ID {s_state["MPT_ID"]} not found in the sample selection, '
+                                       f'switching to the first object on the selection')
+                    s_state['MPT_ID'] = sample_list[0]
+
+                st.selectbox('Object selection', sample_list, key='MPT_ID', on_change=save_objSample, args=("MPT_ID",))
+
+            else:
+                st.sidebar.warning(f'Sub-sample {subSample} MSA does not have objects')
+
+
+        else:
+            st.markdown(f'Sample {sample} is not recognized')
 
     return
 
@@ -123,23 +240,29 @@ def logo_load(file_address=IMAGE_PATH):
    return Image.open(Path(file_address))
 
 
-# Path to the data
 @st.experimental_singleton
-def data_location(file_address=PATH_DATA):
+def obj_database(sample='SMACS', file_address=PATH_DATA):
+
     file_address = Path(file_address)
-    return Path(file_address)
+    data_path = file_address / sample
+
+    if sample == 'SMACS':
+        file_address = data_path/'obj_table_v8.txt'
+        df_database = lime.load_log(file_address)
+    else:
+        file_address = data_path/'sample_df.pkl'
+        df_database = decrypt_file(file_address, st.secrets.calibration.key)
+
+    return data_path, df_database
 
 
 @st.experimental_singleton
-def obj_database(file_address=PATH_DATA, table='obj_table_v8.txt'):
-    file_address = Path(file_address)
-    return lime.load_log(file_address/table)
+def get_obj_spec(data_path, fits_address, obj_ref, sampleDF, norm_flux=1e-20, header=False):
 
-
-@st.experimental_singleton
-def get_obj_spec(fits_address, obj_ref, sampleDF, norm_flux=1e-20):
-
-    z_obj = sampleDF.loc[obj_ref].redshift
+    if sampleDF is not None:
+        z_obj = sampleDF.loc[obj_ref].redshift
+    else:
+        z_obj = 0
 
     wave, e_flux, err, hdr = load_nirspec_fits(fits_address.as_posix())
     mask = np.isnan(err)
@@ -149,12 +272,15 @@ def get_obj_spec(fits_address, obj_ref, sampleDF, norm_flux=1e-20):
     spec = lime.Spectrum(wave, flux, err, redshift=z_obj, units_wave='um', units_flux='Jy', pixel_mask=mask)
     spec.convert_units(units_wave='A', units_flux='Flam', norm_flux=norm_flux)
 
-    log_path = Path(PATH_DATA)/f'logs/{obj_ref}_v8_log.txt'
+    if obj_ref is not None:
+        log_path = data_path/f'logs/{obj_ref}_v8_log.txt'
 
-    if log_path.is_file():
-        spec.load_log(log_path)
+        if log_path.is_file():
+            spec.load_log(log_path)
 
-    return spec
+    output = spec if header is False else (spec, hdr)
+
+    return output
 
 
 # Function to open nirspec fits files
@@ -166,6 +292,10 @@ def load_nirspec_fits(file_address, ext=None):
         spec_type = 'x1d'
 
     elif 's2d' in file_address:
+        ext = 1
+        spec_type = 's2d'
+
+    elif 'uncal' in file_address:
         ext = 1
         spec_type = 's2d'
 
@@ -207,3 +337,15 @@ def figure_conversion(in_fig, static_fig=True, height=850):
 
     return
 
+
+def hdr_to_df(header):
+
+    key_list = list(header.keys())
+    comments_list = header.comments
+
+    df = pd.DataFrame(index=key_list, columns=['Value', 'Comment']).fillna('')
+    for idx in df.index:
+        df.loc[idx, 'Value'] = header.get(idx, '')
+        df.loc[idx, 'Comment'] = comments_list[idx]
+
+    return df

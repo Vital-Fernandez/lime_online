@@ -13,3 +13,4 @@ lime-stable~=0.9.11
 streamlit-authenticator~=0.2.1
 pillow>=9.3.0
 cryptography~=37.0.4
+bokeh~=2.4.3

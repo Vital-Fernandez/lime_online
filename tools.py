@@ -86,9 +86,6 @@ def decrypt_file(pickle_file, key):
     return data
 
 
-
-
-
 # Sample DF slicer for object selection
 def obj_indexing(db_df, visit_var, disp_var, flux_measurements=False):
 
@@ -131,14 +128,20 @@ def save_objSample(param):
 def sample_selection():
 
     if 'sample_hold' not in s_state:
-        s_state['sample_hold'] = 'SMACS'
+        s_state['sample_hold'] = 'CEERs_2022-12'
     s_state['sample'] = s_state[f'sample_hold']
 
-    sample = st.radio('Sample selection', key='sample', options=['SMACS', 'CEERs_2022-12'], on_change=save_objSample,
+    sample = st.radio('Sample selection', key='sample', options=['CEERs_2022-12', 'SMACS'], on_change=save_objSample,
                       args=('sample',))
 
     return sample
 
+def read_database(file_path):
+    return decrypt_file(file_path, st.secrets.calibration.key)
+
+@st.experimental_singleton
+def read_pdf(file_path):
+    return decrypt_file(file_path, st.secrets.calibration.key)
 
 @st.experimental_singleton
 def spectrum_fits_path(sample, sample_df, data_path, **kwargs):
@@ -156,7 +159,6 @@ def spectrum_fits_path(sample, sample_df, data_path, **kwargs):
         st.markdown(f'Sample {sample} not recognized')
 
     return obj_ref, fits_path
-
 
 # Object selection widgets
 def sidebar_widgets(sample_DF, data_path, sample):
@@ -213,6 +215,8 @@ def sidebar_widgets(sample_DF, data_path, sample):
                 sample_list = sample_DF.index.values
             else:
                 sample_list = sub_sample_dict[subSample]
+                sample_list = np.sort(sample_list)
+
 
             if len(sample_list) > 0:
 
@@ -232,7 +236,6 @@ def sidebar_widgets(sample_DF, data_path, sample):
             st.markdown(f'Sample {sample} is not recognized')
 
     return
-
 
 # Front image
 @st.experimental_singleton
@@ -317,7 +320,7 @@ def load_nirspec_fits(file_address, ext=None):
 
         elif spec_type == 's2d':
             header = (hdu_list[0].header, hdu_list[1].header)
-            wave_array = np.linspace(header[1]['WAVSTART'], header[1]['WAVEND'], header[1]['NAXIS1'], endpoint=True)
+            wave_array = np.linspace(header[1]['WAVSTART'], header[1]['WAVEND'], header[1]['NAXIS1'], endpoint=True) * 1000000
             err_array = hdu_list[2].data
             flux_array = hdu_list[1].data
 
@@ -349,3 +352,5 @@ def hdr_to_df(header):
         df.loc[idx, 'Comment'] = comments_list[idx]
 
     return df
+
+

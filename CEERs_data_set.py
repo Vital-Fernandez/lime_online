@@ -17,6 +17,8 @@ def run():
 
     name, auth_status, username = authenticator.login(f'CEERs measurements', 'main')
     s_state['auth_status'] = auth_status
+    s_state['auth_status_hold'] = s_state['auth_status']
+
 
     if auth_status is False:
         st.error(f'Username/password is incorrect')
@@ -27,7 +29,7 @@ def run():
     else:
 
         # Page structure
-        st.sidebar.success("Switch between sections for different results")
+        st.sidebar.success("Switch between the sections above to access the data")
 
         # Object selection widgets
         col_logo, col_welcome = st.columns(2)
@@ -40,7 +42,7 @@ def run():
             st.markdown(f'# Welcome\n# {name}')
 
         # Printed text
-        st.markdown(f'You can expand the side bar on the left hand side to access the data tools and products')
+        st.markdown(f'You can expand the sidebar on the left hand side to access the data tools and products')
 
         # Data selection
         st.markdown(f'### Select the data set to visualize')
@@ -55,7 +57,7 @@ def run():
         # Tables of the New sample
         if s_state['sample'] == 'CEERs_2022-12':
 
-            st.markdown(f'The data Below was tabulated by Mark Dickinson. Please send your questions to '
+            st.markdown(f'The data below was tabulated by Mark Dickinson. Please send your questions to '
                         f'[Mark Dickinson](mailto:admin@cloudhadoop.com), [Pablo Arrabal](pablo.arrabalharo@noirlab.edu)'
                         f' and [Jeyhan Kartaltepe](mailto:jsksps@rit.edu)')
 

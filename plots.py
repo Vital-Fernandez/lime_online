@@ -6,6 +6,7 @@ from bokeh.models import LinearColorMapper, LogColorMapper, TeX
 from bokeh.layouts import column
 from lime.tools import UNITS_LATEX_DICT, latex_science_float
 from astropy.visualization import ZScaleInterval
+import streamlit as st
 
 Z_FUNC_CMAP = ZScaleInterval()
 
@@ -95,10 +96,22 @@ def plot_spectrum(spec):
     return fig
 
 
-def plot_fits_2d(flux_image):
+def plot_fits_2d(flux_image, wave):
 
     # Create the image
-    fig_cfg = {'width': 600, 'aspect_ratio': 3, 'tools': "wheel_zoom,reset,pan,xzoom_in,xzoom_out"}
+    fig_cfg = {'width': 600, 'aspect_ratio': 3, 'tools': "hover,wheel_zoom,reset,pan,xzoom_in,xzoom_out",
+               'toolbar_location':"below", 'tooltips': [("x", "$x"), ("y", "$y")]}
+
+    # TOOLTIPS = [
+    #     ('name', "$name"),
+    #     ('index', "$index"),
+    #     ('pattern', '@pattern'),
+    #     ("x", "$x"),
+    #     ("y", "$y"),
+    #     ("value", "@image"),
+    #     ('squared', '@squared')
+    # ]
+
     fig = figure(**fig_cfg)
     fig.x_range.range_padding = fig.y_range.range_padding = 0
 
@@ -108,9 +121,18 @@ def plot_fits_2d(flux_image):
 
     # Plotting the image
     im_cfg = {'image': [flux_image],
-              'x': 0, 'y': 0,
-              'dw': flux_image.shape[1], 'dh': flux_image.shape[0],
+              'x': wave[0], 'y': 0,
+              'dw': wave[-1]-wave[0], 'dh': flux_image.shape[0],
               'color_mapper': l_mapper, 'level': "image"}
     fig.image(**im_cfg)
+    fig.xaxis.axis_label = r'$$\text{Wavelength }' + f'(Å\,\,\,)$$'
+    fig.yaxis.axis_label = r'$$\text{Pixel y coordinate}$$'
+
 
     return fig
+
+def pdf_display(pdf_render):
+
+    pdf_display = F'<embed src="data:application/pdf;base64,{pdf_render}" width="650" height="500" type="application/pdf">'
+
+    return pdf_display

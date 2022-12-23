@@ -1,12 +1,22 @@
+import base64
+
 import streamlit as st
 
 from pathlib import Path
-from tools import load_nirspec_fits, hdr_to_df
+from tools import load_nirspec_fits, hdr_to_df, encrypt_file, decrypt_file
 from streamlit import session_state as st_state
 from astropy.visualization import ZScaleInterval
 
 from bokeh.plotting import figure, output_file, show
 from bokeh.models import BoxEditTool, ColumnDataSource, LinearColorMapper, LogColorMapper
+
+
+def displayPDF(file):
+    # Opening file from file path
+    with open(file, "rb") as f:
+        base64_pdf_out = base64.b64encode(f.read()).decode('utf-8')
+
+    return base64_pdf_out
 
 
 def myCallBack(attr, old, new):
@@ -16,20 +26,35 @@ def myCallBack(attr, old, new):
 
 if st_state['auth_status']:
 
-    file_address = Path('D:/Downloads/p4_PRISM_1027_s01027_x1d.fits')
-    wave_array, flux_array, err_array, header = load_nirspec_fits(file_address.as_posix())
 
-    fig_cfg = {'width': 600,
-               'tools': "reset,pan"}
+    file_address = Path(r'/data/CEERs_2022-12/bio_plots/00686_bio.pdf')
+    # base64_pdf = displayPDF(file_address)
 
-    im_fig = figure(**fig_cfg)
-    im_fig.x_range.range_padding = im_fig.y_range.range_padding = 0
+    file_encry_address = file_address.parent/'test_pdf_encrypt.pkl'
+    # encrypt_file(file_encry_address, st.secrets.calibration.key, base64_pdf)
+    base64_pdf_d = decrypt_file(file_encry_address, st.secrets.calibration.key)
 
-    # Plotting the image
-    im_cfg = {'x': wave_array, 'y': flux_array}
-    im_fig.step(**im_cfg)
+    # Embedding PDF in HTML
+    pdf_display = F'<embed src="data:application/pdf;base64,{base64_pdf_d}" width="650" height="500" type="application/pdf">'
 
-    st.bokeh_chart(im_fig)
+    # Displaying File
+    st.markdown(pdf_display, unsafe_allow_html=True)
+
+
+    # file_address = Path('D:/Downloads/p4_PRISM_1027_s01027_x1d.fits')
+    # wave_array, flux_array, err_array, header = load_nirspec_fits(file_address.as_posix())
+    #
+    # fig_cfg = {'width': 600,
+    #            'tools': "reset,pan"}
+    #
+    # im_fig = figure(**fig_cfg)
+    # im_fig.x_range.range_padding = im_fig.y_range.range_padding = 0
+    #
+    # # Plotting the image
+    # im_cfg = {'x': wave_array, 'y': flux_array}
+    # im_fig.step(**im_cfg)
+    #
+    # st.bokeh_chart(im_fig)
 
 
 

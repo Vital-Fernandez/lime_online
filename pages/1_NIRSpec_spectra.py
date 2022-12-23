@@ -144,7 +144,7 @@ if s_state['auth_status']:
             st.markdown(f'The .fits file is not available')
 
         st.markdown(f'# Object {s_state["MPT_ID"]}: Bio plot')
-        st.markdown(f' These plots were done by Steve Finkestein. Please select file below.')
+        st.markdown(f' These plots were done by Steve Finkelstein. Please select file below.')
 
         bio_df = read_database(data_path/f'bio_pdf_df.pkl')
         idcs_pdf = bio_df.MPT.isin([s_state["MPT_ID"]])

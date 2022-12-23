@@ -130,7 +130,7 @@ if s_state['auth_status']:
             with tab0:
                 fig = plot_fits_2d(flux1, wave_A)
                 st.bokeh_chart(fig)
-                st.markdown(f'You can click the +/- loop symbols to magnify on the X axis')
+                st.markdown(f'You can click the +/- loupe symbols to magnify along the X axis')
 
             with tab1:
                 hdr_df = hdr_to_df(hdr_list2[0])
@@ -152,6 +152,11 @@ if s_state['auth_status']:
         bio_pdf_file = st.selectbox('Bio plot', pdf_list, key='bio_plot')
         pdf = read_pdf(data_path/'bio_plots'/bio_pdf_file)
         st.markdown(pdf_display(pdf), unsafe_allow_html=True)
+        # st.download_button(label=f"Download {bio_pdf_file} Bio plot PDF",
+        #                    data=pdf_display(pdf),
+        #                    file_name=f"{bio_pdf_file}.pdf",
+        #                    mime='application/octet-stream')
+
 
 # No user
 else:

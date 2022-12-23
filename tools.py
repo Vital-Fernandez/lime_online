@@ -226,7 +226,7 @@ def sidebar_widgets(sample_DF, data_path, sample):
                                        f'switching to the first object on the selection')
                     s_state['MPT_ID'] = sample_list[0]
 
-                st.selectbox('Object selection', sample_list, key='MPT_ID', on_change=save_objSample, args=("MPT_ID",))
+                st.selectbox('MSA MPT_ID list', sample_list, key='MPT_ID', on_change=save_objSample, args=("MPT_ID",))
 
             else:
                 st.sidebar.warning(f'Sub-sample {subSample} MSA does not have objects')

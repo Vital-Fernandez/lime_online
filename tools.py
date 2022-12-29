@@ -128,16 +128,22 @@ def save_objSample(param):
 def sample_selection():
 
     if 'sample_hold' not in s_state:
-        s_state['sample_hold'] = 'CEERs_2022-12'
+        s_state['sample_hold'] = 'reduction_v0.1'
     s_state['sample'] = s_state[f'sample_hold']
 
-    sample = st.radio('Sample selection', key='sample', options=['CEERs_2022-12', 'SMACS'], on_change=save_objSample,
+    sample_list = ['reduction_v0.1', 'Aperture_selection', 'SMACS']
+    sample = st.radio('Sample selection', key='sample', options=sample_list, on_change=save_objSample,
                       args=('sample',))
 
     return sample
 
 def read_database(file_path):
     return decrypt_file(file_path, st.secrets.calibration.key)
+
+@st.experimental_singleton
+def read_file_database(file_path):
+    return decrypt_file(file_path, st.secrets.calibration.key)
+
 
 @st.experimental_singleton
 def read_pdf(file_path):
@@ -151,7 +157,7 @@ def spectrum_fits_path(sample, sample_df, data_path, **kwargs):
         obj_folder = data_path / f'spectra/S3_out_clean_custom_pl_v2.0/{s_state.disp}/{s_state.visit}/{s_state.sourceID}'
         fits_path = obj_folder / Path(sample_df.loc[obj_ref].path).name
 
-    elif sample == 'CEERs_2022-12':
+    elif sample in ['Aperture_selection', 'reduction_v0.1']:
         obj_ref = decrypt_file(data_path/'file_df.pkl', st.secrets.calibration.key)
         fits_path = data_path/'spectra'
 
@@ -203,10 +209,11 @@ def sidebar_widgets(sample_DF, data_path, sample):
             obj_file = obj_folder / Path(sample_DF.loc[obj_ref].path).name
             s_state['spec'] = get_obj_spec(data_path, obj_file, obj_ref, sample_DF)
 
-        elif sample == 'CEERs_2022-12':
+        elif sample in ['Aperture_selection', 'reduction_v0.1']:
             st.markdown(f'# Object selection')
 
-            sub_sample_dict = decrypt_file(data_path/'msa'/'subsamples_dict_hashed.pkl', st.secrets.calibration.key)
+            msa_folder = data_path.parent / 'msa'
+            sub_sample_dict = decrypt_file(msa_folder/'subsamples_dict_hashed.pkl', st.secrets.calibration.key)
 
             sub_sample_list = ['All'] + list(sub_sample_dict.keys())
             subSample = st.selectbox('Sub-sample', sub_sample_list, key='subsample', on_change=save_objSample, args=("subsample",))
@@ -216,7 +223,6 @@ def sidebar_widgets(sample_DF, data_path, sample):
             else:
                 sample_list = sub_sample_dict[subSample]
                 sample_list = np.sort(sample_list)
-
 
             if len(sample_list) > 0:
 

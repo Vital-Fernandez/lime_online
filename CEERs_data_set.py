@@ -19,7 +19,6 @@ def run():
     s_state['auth_status'] = auth_status
     s_state['auth_status_hold'] = s_state['auth_status']
 
-
     if auth_status is False:
         st.error(f'Username/password is incorrect')
 
@@ -55,7 +54,9 @@ def run():
         sidebar_widgets(sample_df, data_path, s_state['sample'])
 
         # Tables of the New sample
-        if s_state['sample'] == 'CEERs_2022-12':
+        if s_state['sample'] in ['Aperture_selection', 'reduction_v0.1']:
+
+            msa_folder = data_path.parent/'msa'
 
             st.markdown(f'The data below was tabulated by Mark Dickinson. Please send your questions to '
                         f'[Mark Dickinson](mailto:admin@cloudhadoop.com), [Pablo Arrabal](pablo.arrabalharo@noirlab.edu)'
@@ -75,7 +76,7 @@ def run():
 
             # Table with the MPT per field
             st.markdown(f'## MPT IDs by field')
-            field_sample_file = data_path/'msa'/'CEERS_MSA_selected_by_field_hashed.pkl'
+            field_sample_file = msa_folder/'CEERS_MSA_selected_by_field_hashed.pkl'
             sample_field_df = decrypt_file(field_sample_file, st.secrets.calibration.key)
             st.dataframe(sample_field_df)
 
@@ -93,7 +94,7 @@ def run():
 
                 # Table with the MSA MPT ids
                 st.markdown(f'## MSA MPT IDs')
-                field_sample_file = data_path / 'msa' / f'msa_selected_{s_state["subsample"]}_hashed.pkl'
+                field_sample_file =msa_folder/f'msa_selected_{s_state["subsample"]}_hashed.pkl'
                 msa_sample_df = decrypt_file(field_sample_file, st.secrets.calibration.key)
                 st.dataframe(msa_sample_df)
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import lime.tools
 from tools import de_calibrate_func, obj_database, load_nirspec_fits, sidebar_widgets, hdr_to_df, spectrum_fits_path, \
-    get_obj_spec, read_database, read_pdf
+    get_obj_spec, read_database, read_pdf, decrypt_file, read_file_database
 from plots import plot_nirspec_2D, plot_spectrum, plot_fits_2d, pdf_display
 from streamlit import session_state as s_state
 
@@ -82,14 +82,16 @@ if s_state['auth_status']:
     else:
 
         # Locate the object and its 1d fits file
-        files_df, fits_path = spectrum_fits_path(s_state['sample'], sample_df, data_path)
+        fits_path = data_path/'spectra'
+        file_df_path = data_path/'file_df.pkl'
+        files_df = read_file_database(file_df_path) #decrypt_file(data_path/'file_df.pkl', st.secrets.calibration.key)
+
+        # Index the files
         idcs_1d = files_df.MPT.isin([s_state["MPT_ID"]]) & (files_df.ext == 'x1d')
         idcs_2d = files_df.MPT.isin([s_state["MPT_ID"]]) & (files_df.ext == 's2d')
 
-        files_1d = files_df.loc[idcs_1d].index.values
-        files_2d = files_df.loc[idcs_2d].index.values
-        files_1d = np.sort(files_1d)
-        files_2d = np.sort(files_2d)
+        files_1d, files_2d = files_df.loc[idcs_1d].index.values, files_df.loc[idcs_2d].index.values
+        files_1d, files_2d = np.sort(files_1d), np.sort(files_2d)
 
         st.markdown(f'# Object {s_state["MPT_ID"]}: x1d spectrum')
 
@@ -101,9 +103,9 @@ if s_state['auth_status']:
             tab0, tab1, tab2 = st.tabs(['Spectrum', 'Header 0', 'Header 1'])
 
             with tab0:
+                print(s_state['spec'].wave.data)
                 st.bokeh_chart(plot_spectrum(s_state['spec']))
                 st.markdown(f'You can click the +/- loop symbols to magnify on the X axis')
-
             with tab1:
                 hdr_df = hdr_to_df(hdr_list[0])
                 st.dataframe(hdr_df, width=800)
@@ -146,11 +148,12 @@ if s_state['auth_status']:
         st.markdown(f'# Object {s_state["MPT_ID"]}: Bio plot')
         st.markdown(f' These plots were done by Steve Finkelstein. Please select file below.')
 
-        bio_df = read_database(data_path/f'bio_pdf_df.pkl')
+        bio_folder = data_path.parent/'bio_plots'
+        bio_df = read_database(bio_folder/f'bio_pdf_df.pkl')
         idcs_pdf = bio_df.MPT.isin([s_state["MPT_ID"]])
         pdf_list = bio_df.loc[idcs_pdf].index.values
         bio_pdf_file = st.selectbox('Bio plot', pdf_list, key='bio_plot')
-        pdf = read_pdf(data_path/'bio_plots'/bio_pdf_file)
+        pdf = read_pdf(bio_folder/bio_pdf_file)
         st.markdown(pdf_display(pdf), unsafe_allow_html=True)
         # st.download_button(label=f"Download {bio_pdf_file} Bio plot PDF",
         #                    data=pdf_display(pdf),

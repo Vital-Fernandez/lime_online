@@ -64,7 +64,6 @@ def plot_spectrum(spec):
 
     fig = figure(width=600, height=300, tools="pan,xwheel_pan,xzoom_in,xzoom_out,wheel_zoom,reset")
     # im_fig.x_range.range_padding = im_fig.y_range.range_padding = 0
-
     fig.step(x=spec.wave, y=spec.flux, mode="center")
 
     units_wave = UNITS_LATEX_DICT[spec.units_wave].replace(r"\AA", "Å")

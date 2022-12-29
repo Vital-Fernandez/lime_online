@@ -1,4 +1,5 @@
 import base64
+from PIL import Image
 
 import streamlit as st
 
@@ -6,7 +7,6 @@ from pathlib import Path
 from tools import load_nirspec_fits, hdr_to_df, encrypt_file, decrypt_file
 from streamlit import session_state as st_state
 from astropy.visualization import ZScaleInterval
-
 from bokeh.plotting import figure, output_file, show
 from bokeh.models import BoxEditTool, ColumnDataSource, LinearColorMapper, LogColorMapper
 
@@ -26,19 +26,26 @@ def myCallBack(attr, old, new):
 
 if st_state['auth_status']:
 
+    image_file = Path(r'/tests/page0.png')
+    image_pickle = Path(r'/tests/page0.pkl')
+    image = Image.open(image_file)
 
-    file_address = Path(r'/data/CEERs_2022-12/bio_plots/00686_bio.pdf')
-    # base64_pdf = displayPDF(file_address)
 
-    file_encry_address = file_address.parent/'test_pdf_encrypt.pkl'
-    # encrypt_file(file_encry_address, st.secrets.calibration.key, base64_pdf)
-    base64_pdf_d = decrypt_file(file_encry_address, st.secrets.calibration.key)
-
-    # Embedding PDF in HTML
-    pdf_display = F'<embed src="data:application/pdf;base64,{base64_pdf_d}" width="650" height="500" type="application/pdf">'
-
-    # Displaying File
-    st.markdown(pdf_display, unsafe_allow_html=True)
+    encrypt_file(image_pickle, st.secrets.calibration.key, image)
+    image_d = decrypt_file(image_pickle, st.secrets.calibration.key)
+    st.image(image_d, caption='Sunrise by the mountains')
+    # file_address = Path(r'/data/CEERs_2022-12/bio_plots/00686_bio.pdf')
+    # # base64_pdf = displayPDF(file_address)
+    #
+    # file_encry_address = file_address.parent/'test_pdf_encrypt.pkl'
+    # # encrypt_file(file_encry_address, st.secrets.calibration.key, base64_pdf)
+    # base64_pdf_d = decrypt_file(file_encry_address, st.secrets.calibration.key)
+    #
+    # # Embedding PDF in HTML
+    # pdf_display = F'<embed src="data:application/pdf;base64,{base64_pdf_d}" width="650" height="500" type="application/pdf">'
+    #
+    # # Displaying File
+    # st.markdown(pdf_display, unsafe_allow_html=True)
 
 
     # file_address = Path('D:/Downloads/p4_PRISM_1027_s01027_x1d.fits')

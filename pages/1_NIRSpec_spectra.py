@@ -54,7 +54,7 @@ if s_state['auth_status']:
             # Display the header
             st.markdown(f'### {obj_ref} header data')
             tab1, tab2 = st.tabs(['Extension 0', 'Extension 1'])
-            s_state['spec'] = get_obj_spec(data_path, obj_file, obj_ref, None)
+            s_state['spec'] = get_obj_spec(data_path, obj_file, obj_ref, z_obj=0, sample=s_state['sample'])
 
             with tab1:
                 hdr_df = hdr_to_df(hdr_list[0])
@@ -84,7 +84,7 @@ if s_state['auth_status']:
         # Locate the object and its 1d fits file
         fits_path = data_path/'spectra'
         file_df_path = data_path/'file_df.pkl'
-        files_df = read_file_database(file_df_path) #decrypt_file(data_path/'file_df.pkl', st.secrets.calibration.key)
+        files_df = read_file_database(file_df_path)
 
         # Index the files
         idcs_1d = files_df.MPT.isin([s_state["MPT_ID"]]) & (files_df.ext == 'x1d')
@@ -98,7 +98,7 @@ if s_state['auth_status']:
         if len(files_1d) > 0:
             fits_1d = st.selectbox('Observations', files_1d, key='fits_1d')
             fits1_path = data_path/'spectra'/f'{fits_1d}.fits'
-            s_state['spec'], hdr_list = get_obj_spec(None, fits1_path, None, None, header=True)
+            s_state['spec'], hdr_list = get_obj_spec(None, fits1_path, None, z_obj=0, header=True, sample=s_state['sample'])
 
             tab0, tab1, tab2 = st.tabs(['Spectrum', 'Header 0', 'Header 1'])
 

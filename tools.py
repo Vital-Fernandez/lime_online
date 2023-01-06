@@ -8,7 +8,7 @@ from astropy.io import fits
 from pathlib import Path
 import streamlit.components.v1 as components
 import streamlit as st
-from streamlit import session_state as s_state
+from streamlit import session_state as s_state, secrets
 from PIL import Image
 from cryptography.fernet import Fernet
 
@@ -137,8 +137,10 @@ def sample_selection():
 
     return sample
 
+
 def read_database(file_path):
     return decrypt_file(file_path, st.secrets.calibration.key)
+
 
 @st.experimental_singleton
 def read_file_database(file_path):
@@ -146,8 +148,14 @@ def read_file_database(file_path):
 
 
 @st.experimental_singleton
+def read_ceers_database(file_path):
+    return decrypt_file(file_path, st.secrets.calibration.key)
+
+
+@st.experimental_singleton
 def read_pdf(file_path):
     return decrypt_file(file_path, st.secrets.calibration.key)
+
 
 @st.experimental_singleton
 def spectrum_fits_path(sample, sample_df, data_path, **kwargs):
@@ -165,6 +173,7 @@ def spectrum_fits_path(sample, sample_df, data_path, **kwargs):
         st.markdown(f'Sample {sample} not recognized')
 
     return obj_ref, fits_path
+
 
 # Object selection widgets
 def sidebar_widgets(sample_DF, data_path, sample):
@@ -207,7 +216,9 @@ def sidebar_widgets(sample_DF, data_path, sample):
             obj_ref = f'{s_state.sourceID}_{s_state.visit}_{s_state.disp}'
             obj_folder = data_path / f'spectra/S3_out_clean_custom_pl_v2.0/{s_state.disp}/{s_state.visit}/{s_state.sourceID}'
             obj_file = obj_folder / Path(sample_DF.loc[obj_ref].path).name
-            s_state['spec'] = get_obj_spec(data_path, obj_file, obj_ref, sample_DF)
+            z_obj = sample_DF.loc[obj_ref, 'redshift']
+
+            s_state['spec'] = get_obj_spec(data_path, obj_file, obj_ref, z_obj=z_obj, sample=s_state['sample'])
 
         elif sample in ['Aperture_selection', 'reduction_v0.1']:
             st.markdown(f'# Object selection')
@@ -243,6 +254,7 @@ def sidebar_widgets(sample_DF, data_path, sample):
 
     return
 
+
 # Front image
 @st.experimental_singleton
 def logo_load(file_address=IMAGE_PATH):
@@ -266,26 +278,36 @@ def obj_database(sample='SMACS', file_address=PATH_DATA):
 
 
 @st.experimental_singleton
-def get_obj_spec(data_path, fits_address, obj_ref, sampleDF, norm_flux=1e-20, header=False):
+def get_obj_spec(data_path, fits_address, obj_ref, norm_flux=1e-20, z_obj=0, header=False, sample=None):
 
-    if sampleDF is not None:
-        z_obj = sampleDF.loc[obj_ref].redshift
-    else:
-        z_obj = 0
+    # if sample == 'SMACS':
+    #     if sampleDF is not None:
+    #         z_obj = sampleDF.loc[obj_ref].redshift
+    #     else:
+    #         z_obj = 0
+
 
     wave, e_flux, err, hdr = load_nirspec_fits(fits_address.as_posix())
     mask = np.isnan(err)
 
     flux = de_calibrate_func(e_flux)
 
-    spec = lime.Spectrum(wave, flux, err, redshift=z_obj, units_wave='um', units_flux='Jy', pixel_mask=mask)
+    spec = lime.Spectrum(wave, flux, err, redshift=z_obj, units_wave='um', units_flux='Jy')#, pixel_mask=mask)
     spec.convert_units(units_wave='A', units_flux='Flam', norm_flux=norm_flux)
 
     if obj_ref is not None:
-        log_path = data_path/f'logs/{obj_ref}_v8_log.txt'
+        if sample == 'SMACS':
+            log_path = data_path/f'logs/{obj_ref}_v8_log.txt'
+            if log_path.is_file():
+                spec.load_log(log_path)
 
-        if log_path.is_file():
-            spec.load_log(log_path)
+
+        else:
+            log_path = data_path/f'logs/{obj_ref}_fluxes.pkl'
+
+            if log_path.is_file():
+                log_df = decrypt_file(log_path, secrets.calibration.key)
+                spec.load_log(log_df)
 
     output = spec if header is False else (spec, hdr)
 
